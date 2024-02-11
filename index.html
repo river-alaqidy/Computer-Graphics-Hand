@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Funky Hand</title>
+</head>
+
+<body>
+  <script id="vertexShader" type="not-js">
+      attribute vec3 vPosition;
+      attribute vec3 vNormal;
+      attribute vec2 vTexCoord;
+      varying vec3 fPosition;
+      varying vec3 fNormal;
+      varying vec2 fTexCoord;
+      uniform mat4 uMV;
+      uniform mat4 uMVP;
+
+      void main(void) {
+        gl_Position = uMVP * vec4(vPosition, 1.0);
+        fPosition = (uMV * vec4(vPosition, 1.0)).xyz;
+        fNormal = vNormal;
+        fTexCoord = vTexCoord;
+     }
+    </script>
+
+  <script id="fragmentShader" type="not-js">
+    precision highp float;
+    varying vec3 fPosition;
+    varying vec3 fNormal;
+    varying vec2 fTexCoord;
+    uniform mat4 uMV;
+    uniform mat3 uMVn;
+    uniform sampler2D texSampler1;
+    uniform sampler2D texSampler2;
+    
+    const vec3 lightV = vec3(0.0, -0.3, 1.0);
+    const float lightI = 1.0;
+    const float ambientC = 0.4;
+    const float diffuseC = 0.5;
+    const float specularC = 0.8;
+    const float specularE = 32.0;
+    const vec3 lightCol = vec3(1.0, 1.0, 1.0);
+    
+    vec2 blinnPhongDir(vec3 lightDir, vec3 n, float lightInt, float Ka,
+        float Kd, float Ks, float shininess) {
+        vec3 s = normalize(lightDir);
+        vec3 v = normalize(-fPosition);
+        vec3 h = normalize(v + s);
+        float diffuse = Ka + Kd * lightInt * max(0.0, dot(n, s));
+        float spec = Ks * pow(max(0.0, dot(n, h)), shininess);
+        return vec2(diffuse, spec);
+    }
+    
+    void main(void) {
+        vec3 dNormal=texture2D(texSampler2,fTexCoord).xyz;
+        vec3 n_perturbed = normalize(dNormal+fNormal);
+        vec3 n = normalize(uMVn * n_perturbed);
+
+        // make funky greens and purpler diffuse shader
+        vec3 dotColor1 = vec3(0.0, 1.0, 0.0); // green
+        vec3 dotColor2 = vec3(2.0, 0.0, 2.0); // purple
+        float dotSize = 0.1;
+        vec2 pattern = mod(floor(fPosition.xy / dotSize), 2.0);
+        vec3 diffuseColor = mix(dotColor1, dotColor2, pattern.x * pattern.y);
+        
+        // color of specular light will be blue
+        vec3 specularColor = vec3(0.0, 0.0, 1.0);
+
+        vec3 ColorS = blinnPhongDir(lightV, n, 0.0, 0.0, 0.0, specularC, specularE).y * lightCol * specularColor;
+        vec3 ColorAD = blinnPhongDir(lightV, n, lightI, ambientC, diffuseC, 0.0, 1.0).x * diffuseColor;
+        
+        gl_FragColor = vec4((ColorAD + ColorS), 1.0);
+    }
+    </script>
+
+  <canvas id="mycanvas" width="500" height="500"></canvas>
+  <br>
+  <input id="slider1" type="range" min="-100" max="100" />
+  <input id="slider2" type="range" min="-100" max="100" />
+  <script type="text/javascript" src="gl-matrix-min.js"></script>
+
+  <script src="hand.js" id="module"></script>
+
+  <script src="script.js" id="module"></script>
+</body>
+
+</html>
